@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @author Semyon Dragunov <sam.dragunov@gmail.com>
+ * https://github.com/SemyonDragunov
+ */
+
+/**
+ * Implements hook_install().
+ */
+function sl7_slider_install() {
+  // Установка дефолтного конфига.
+  variable_set('sl7_slider_settings', array(
+    'pagination' => 1,
+    'navigation' => 1,
+    'designStyle' => 'dark',
+    'autoPlay' => 5000,
+    'transitionStyle' => 'fade',
+  ));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function sl7_slider_uninstall() {
+  // Удаление переменных.
+  $result = db_select('variable', 'v')
+    ->fields('v', array('name'))
+    ->condition('name', 'sl7_slider_%', 'LIKE')
+    ->execute();
+
+  foreach ($result as $row) {
+    variable_del($row->name);
+  }
+}

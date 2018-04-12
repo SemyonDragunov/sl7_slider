@@ -1,0 +1,21 @@
+{
+  "name": "sl7_slider",
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "authors": [
+    "Semyon Dragunov <sam.dragunov@gmail.com>"
+  ],
+  "license": "Apache License 2.0",
+  "homepage": "https://github.com/SemyonDragunov/sl7_slider",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "susy": "~2.2.12"
+  }
+}

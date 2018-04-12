@@ -1,0 +1,456 @@
+<?php
+
+/**
+ * @file
+ * The SL7 Slider module.
+ * 
+ * @author Semyon Dragunov <sam.dragunov@gmail.com>
+ * https://github.com/SemyonDragunov
+ */
+
+define('SL7_SLIDER_ADMIN_PATH', SL7_CONTROL_PANEL_ADMIN_PATH . '/apps/slider');
+
+/**
+ * Implements hook_menu().
+ */
+function sl7_slider_menu() {
+
+  $items[SL7_SLIDER_ADMIN_PATH] = array(
+    'title' => 'Слайдер',
+    'description' => 'Управление слайдами.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sl7_slider_settings_form'),
+    'access arguments' => array('sl7_slider administer'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  return $items;
+}
+
+/**
+ * Implement hook_permission().
+ */
+function sl7_slider_permission() {
+  return array(
+    'sl7_slider administer' => array('title' => 'Управление слайдером.')
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function sl7_slider_theme() {
+  $items = array(
+    'sl7_slider' => array(
+      'variables' => array(
+        'slider_settings' => NULL,
+        'slides' => NULL,
+      ),
+      'template' => 'templates/sl7-slider',
+    ),
+    'sl7_slider_configuration_form' => array(
+      'render element' => 'form',
+    ),
+  );
+
+  foreach ($items as &$item) {
+    if (!isset($item['file'])) {
+      $item['file'] = 'templates/theme.inc';
+    }
+  }
+
+  return $items;
+}
+
+/**
+ * Implements hook_sl7_slider_theme().
+ */
+function sl7_slider_sl7_slider_theme() {
+  $path = drupal_get_path('module', 'sl7_slider');
+
+  $themes['dark'] = array(
+    'title' => 'Тёмный',
+    'css' => $path . '/css/sl7_slider.css',
+  );
+
+  $themes['light'] = array(
+    'title' => 'Светлый',
+    'css' => $path . '/css/sl7_slider.css',
+  );
+
+  return $themes;
+}
+
+/**
+ * Получение массива тем для слайдера.
+ *
+ * @param null $theme
+ *  Или машинное название темы или пустое значение (выдаст все темы).
+ * @return array
+ */
+function sl7_slider_get_theme($theme = NULL) {
+  $themes = &drupal_static(__FUNCTION__);
+
+  if (!isset($themes)) {
+    $themes = module_invoke_all('sl7_slider_theme');
+
+    foreach ($themes as $name => $info) {
+      $themes[$name] += array(
+        'css' => FALSE,
+        'js' => FALSE,
+      );
+    }
+  }
+
+  drupal_alter(__FUNCTION__, $themes);
+
+  if (array_key_exists($theme, $themes)) {
+    return $themes[$theme];
+  }
+
+  return $themes;
+}
+
+/**
+ * Получение списка машинных названий тем.
+ *
+ * @param null $theme
+ *  Или машинное название темы или пустое значение (выдаст все темы).
+ * @return array
+ */
+function sl7_slider_get_theme_name($theme = NULL) {
+  $themes = sl7_slider_get_theme();
+  $theme_all = array();
+
+  foreach ($themes as $name => $options) {
+    $theme_all[$name] = $options['title'];
+  }
+
+  if (array_key_exists($theme, $theme_all)) {
+    return $theme_all[$theme];
+  }
+
+  return $theme_all;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function sl7_slider_block_info() {
+  $blocks['slider'] = array(
+    'info' => 'Слайдер',
+    'status' => 1,
+    'weight' => -10,
+    'cache' => DRUPAL_CACHE_GLOBAL,
+    'visibility' => BLOCK_VISIBILITY_NOTLISTED,
+  );
+
+  if (array_key_exists('slider', system_region_list(variable_get('theme_default')))) {
+    $blocks['slider']['region'] = 'slider';
+  }
+  else {
+    $blocks['slider']['region'] = 'front';
+  }
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function sl7_slider_block_view($delta = '') {
+  $block = array();
+
+  if ($delta == 'slider') {
+    $settings = variable_get('sl7_slider_settings');
+    $slides = variable_get('sl7_slider_slides');
+    $theme = sl7_slider_get_theme($settings['designStyle']);
+    $prepare_slides = sl7_slider_prepare_slide($slides);
+
+    if (count($prepare_slides) >= 2) {
+      $block['content'] = array(
+        '#markup'   => theme('sl7_slider', array(
+          'slider_settings' => $settings,
+          'slides' => $prepare_slides,
+        )),
+        '#attached' => array(
+          'js'  => array(
+            drupal_get_path('module', 'sl7_slider') . '/js/sl7_slider.js',
+            drupal_get_path('module', 'sl7_slider') . '/vendors/owl.carousel/owl.carousel.min.js',
+            array('data' => $settings, 'type' => 'setting'),
+          ),
+          'css' => array(
+            drupal_get_path('module', 'sl7_slider') . '/vendors/owl.carousel/owl.carousel.css',
+            drupal_get_path('module', 'sl7_slider') . '/vendors/owl.carousel/owl.transitions.css',
+          ),
+        ),
+      );
+
+      if ($theme['css']) {
+        $block['content']['#attached']['css'][] = $theme['css'];
+      }
+      if ($theme['js']) {
+        $block['content']['#attached']['js'][] = $theme['js'];
+      }
+    }
+  }
+
+  return $block;
+}
+
+/**
+ * Подготовка слайдов к показу. Отключение не опубликованных. Сортировка.
+ * @param $slides
+ * @return array
+ */
+function sl7_slider_prepare_slide($slides) {
+  $prepare_slides = array();
+
+  foreach ($slides as $i => $value) {
+    if ($value['published'] == TRUE) {
+      $weight = isset($value['weight']) ? $value['weight'] : 0;
+
+      while (isset($prepare_slides[$weight])) {
+        $weight++;
+      }
+
+      $prepare_slides[$weight] = $value;
+    }
+  }
+
+  return $prepare_slides;
+}
+
+/**
+ * Implements hook_contextual_links_view_alter().
+ */
+function sl7_slider_contextual_links_view_alter(&$element, &$items) {
+  if (isset($element['#element']['#block']) && $element['#element']['#block']->delta == "slider") {
+    $element['#links']['settings'] = array(
+      'title' => 'Настроить слайдер',
+      'href' => url(SL7_SLIDER_ADMIN_PATH),
+    );
+  }
+}
+
+function sl7_slider_settings_form($form, &$form_state) {
+  $settings = variable_get('sl7_slider_settings', array());
+  $form_state['slides'] = variable_get('sl7_slider_slides');
+
+  $form['#tree'] = TRUE;
+
+  $form['settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Настройки',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['settings']['pagination'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Точки для переключения слайдов',
+    '#default_value' => isset($settings['pagination']) ? $settings['pagination'] : 0,
+  );
+  $form['settings']['navigation'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Кнопки управления: Назад, Вперед',
+    '#default_value' => isset($settings['navigation']) ? $settings['navigation'] : 0,
+  );
+  $form['settings']['designStyle'] = array(
+    '#type' => 'select',
+    '#title' => 'Стиль оформления переключателей',
+    '#options' => sl7_slider_get_theme_name(),
+    '#default_value' => isset($settings['designStyle']) ? $settings['designStyle'] : 'dark',
+  );
+  $form['settings']['autoPlay'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Автоматическое переключение слайда',
+    '#description' => 'В миллисекундах. Если хотите выключить автоматическую смену слайдов, установите на 0.',
+    '#element_validate' => array('element_validate_number'),
+    '#required' => TRUE,
+    '#default_value' => isset($settings['autoPlay']) ? $settings['autoPlay'] : 5000,
+  );
+  $form['settings']['transitionStyle'] = array(
+    '#type' => 'select',
+    '#title' => 'Стиль переключения слайдов',
+    '#options' => array(
+      'fade' => 'Замещение',
+      'backSlide' => 'Конвейер',
+      'goDown' => 'Выпадение сверху',
+      'fadeUp' => 'Замещение с увеличением',
+    ),
+    '#default_value' => isset($settings['transitionStyle']) ? $settings['transitionStyle'] : 'fade',
+  );
+
+  // Draggable table.
+  $form['order'] = array();
+
+  $form['tabs'] = array(
+    '#type' => 'vertical_tabs',
+    '#prefix' => '<div id="sliders">',
+    '#suffix' => '</div>',
+  );
+
+  $form['new'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Добавить слайд',
+    '#group' => 'tabs',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => -10,
+  );
+  $form['new']['upload'] = array(
+    '#name' => 'files[upload]',
+    '#type' => 'file',
+    '#title' => 'Добавить слайд',
+    '#description' => 'Разрешенные форматы: gif png jpg jpeg. До 2 Мб.<br />Если слайдер будет расположен на главной странице сайта, то загружайте изображения с шириной не менее 1920px.<br />Так же загружайте одинаковые по размерам слайды.<br />Для начала показа загрузите 2 и более слайда.',
+  );
+
+  if (isset($form_state['slides']) && !empty($form_state['slides'])) {
+    foreach ($form_state['slides'] as $i => $value) {
+      $name = 'Слайд ' . $value['fid'];
+
+      $form['slides'][$i] = array(
+        '#type'        => 'fieldset',
+        '#title'       => $name,
+        '#group'       => 'tabs',
+        '#collapsible' => TRUE,
+        '#collapsed'   => TRUE,
+      );
+      $form['slides'][$i]['weight'] = array(
+        '#type' => 'weight',
+        '#delta' => 10,
+        '#default_value' => isset($value['weight']) ? $value['weight'] : 1,
+        '#attributes' => array(
+          'class' => array('slide-weight'),
+        ),
+      );
+      $form['slides'][$i]['published'] = array(
+        '#type' => 'checkbox',
+        '#default_value' => isset($value['published']) ? $value['published'] : '',
+      );
+      $form['slides'][$i]['delete'] = array(
+        '#type'          => 'checkbox',
+        '#default_value' => 0,
+      );
+      $file = file_load($value['fid']);
+      $variables = array(
+        'path'       => $file->uri,
+        'style_name' => 'thumbnail',
+      );
+      $image = theme('image_style', $variables);
+      $form['slides'][$i]['preview'] = array(
+        '#markup' => $image,
+      );
+      $form['slides'][$i]['fid'] = array(
+        '#type'  => 'hidden',
+        '#value' => isset($value['fid']) ? $value['fid'] : 0,
+      );
+      $form['slides'][$i]['link'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Ссылка',
+        '#description'   => 'Если укажите ссылку, то весь слайд станет ссылкой.',
+        '#default_value' => isset($value['link']) ? $value['link'] : '',
+      );
+      $form['slides'][$i]['link_target'] = array(
+        '#type'          => 'select',
+        '#title'         => 'Назначение ссылки',
+        '#options'       => array(
+          '_self'  => 'В этой же вкладке',
+          '_blank' => 'В новой вкладке',
+        ),
+        '#default_value' => '_self',
+        '#states'        => array(
+          'visible' => array(
+            ":input[name='slides[$i][link]']" => array('!value' => '')
+          )
+        )
+      );
+      $form['slides'][$i]['title'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Заголовок',
+        '#default_value' => isset($value['title']) ? $value['title'] : '',
+      );
+      $form['slides'][$i]['description'] = array(
+        '#type'          => 'text_format',
+        '#title'         => 'Текст слайда',
+        '#default_value' => isset($value['description']['value']) ? $value['description']['value'] : '',
+        '#format'        => isset($value['description']['format']) ? $value['description']['format'] : 'plain_text',
+      );
+    }
+  }
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Сохранить',
+    '#weight' => 999,
+  );
+
+  // Add a theme function to theme the form
+  $form['#theme'][] = 'sl7_slider_configuration_form';
+
+  return $form;
+}
+
+function sl7_slider_settings_form_add_slide($file) {
+  $file = is_object($file) ? $file : file_load($file);
+
+  $slide = array(
+    'fid' => $file->fid,
+    'title' => '',
+    'delete' => 0,
+    'description' => array(
+      'value' => '',
+      'format' => filter_fallback_format(),
+    ),
+  );
+
+  return $slide;
+}
+
+function sl7_slider_settings_form_submit($form, &$form_state) {
+
+  if (isset($form_state['values']['slides']) && !empty($form_state['values']['slides'])) {
+    foreach ($form_state['values']['slides'] as $i => &$value) {
+      // Удаление слайдов.
+      if ($value['delete'] == 1) {
+        unset($form_state['values']['slides'][$i]);
+
+        if (isset($value['fid']) && $value['fid'] != 0) {
+          $file = file_load($value['fid']);
+          file_delete($file);
+        }
+      }
+      else {
+        unset($value['delete']);
+        // Смена статуса сохраненных файлов.
+        SL7ApiFile::setPermanent($value['fid'], 'sl7_slider', 'slide', $i);
+      }
+    }
+  }
+
+  // Создание нового слайда.
+  $file = new stdClass;
+  $validate = array(
+    'file_validate_is_image' => array(),
+    'file_validate_extensions' => array('gif png jpg jpeg'),
+    'file_validate_size' => array(1024*1024*2),
+  );
+  if ($file = file_save_upload('upload', $validate)) {
+    $folder = 'public://sl7_slider';
+    file_prepare_directory($folder, FILE_CREATE_DIRECTORY);
+    $parts = pathinfo($file->filename);
+    $destination = $folder . '/' . $parts['basename'];
+    $file->status = FILE_STATUS_PERMANENT;
+    $file = file_copy($file, $destination, FILE_EXISTS_REPLACE);
+    $form_state['values']['slides'][] = sl7_slider_settings_form_add_slide($file);
+  }
+
+  // Пересортируем.
+  sort($form_state['values']['slides']);
+
+  // Сохраняем.
+  variable_set('sl7_slider_settings', $form_state['values']['settings']);
+  variable_set('sl7_slider_slides', $form_state['values']['slides']);
+  drupal_set_message('Настройки слайдера сохранены.');
+}

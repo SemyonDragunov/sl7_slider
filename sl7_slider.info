@@ -1,0 +1,12 @@
+name = Слайдер
+description = Слайдер основаный на OwlCarousel.
+package = SL7
+version = 7.x-1.0
+core = 7.x
+
+configure = admin/control-panel/apps/slider
+
+dependencies[] = sl7_control_panel
+dependencies[] = jquery_update
+dependencies[] = image
+dependencies[] = contextual
