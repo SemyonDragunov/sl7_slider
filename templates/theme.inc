@@ -10,44 +10,46 @@ function theme_sl7_slider_configuration_form($variables) {
   drupal_add_tabledrag('sl7-slider-configuration', 'order', 'sibling', 'slide-weight');
   $rows = array();
 
-  foreach ($form['slides'] as $slide => &$property) {
-    if (is_numeric($slide)) {
-      // Create an array to hold the table row for the current slide
-      $row = array();
+  if (isset($form['slides']) && !empty($form['slides'])) {
+    foreach ($form['slides'] as $slide => &$property) {
+      if (is_numeric($slide)) {
+        // Create an array to hold the table row for the current slide
+        $row = [];
 
-      // Add a column containing the slide's title to the current row
-      $name = $property['fid'];
-      $row[] = array(
-        'data' => 'Слайд ' . $name['#value'],
-      );
-      unset($property['fid']);
+        // Add a column containing the slide's title to the current row
+        $name = $property['fid'];
+        $row[] = [
+          'data' => 'Слайд ' . $name['#value'],
+        ];
+        unset($property['fid']);
 
-      // Add a column containing the slide's weight to the current row
-      $weight = $property['weight'];
-      $row[] = array(
-        'data' => drupal_render($weight),
-      );
-      unset($property['weight']);
+        // Add a column containing the slide's weight to the current row
+        $weight = $property['weight'];
+        $row[] = [
+          'data' => drupal_render($weight),
+        ];
+        unset($property['weight']);
 
-      // Add a column containing the slide's weight to the current row
-      $published = $property['published'];
-      $row[] = array(
-        'data' => drupal_render($published),
-      );
-      unset($property['published']);
+        // Add a column containing the slide's weight to the current row
+        $published = $property['published'];
+        $row[] = [
+          'data' => drupal_render($published),
+        ];
+        unset($property['published']);
 
-      // Add a column containing the slide's weight to the current row
-      $delete = $property['delete'];
-      $row[] = array(
-        'data' => drupal_render($delete),
-      );
-      unset($property['delete']);
+        // Add a column containing the slide's weight to the current row
+        $delete = $property['delete'];
+        $row[] = [
+          'data' => drupal_render($delete),
+        ];
+        unset($property['delete']);
 
-      // Store the individual row
-      $rows[] = array(
-        'data' => $row,
-        'class' => array('draggable'),
-      );
+        // Store the individual row
+        $rows[] = [
+          'data' => $row,
+          'class' => ['draggable'],
+        ];
+      }
     }
   }
 

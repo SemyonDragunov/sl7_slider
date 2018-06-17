@@ -165,7 +165,10 @@ function sl7_slider_block_view($delta = '') {
     $settings = variable_get('sl7_slider_settings');
     $slides = variable_get('sl7_slider_slides');
     $theme = sl7_slider_get_theme($settings['designStyle']);
-    $prepare_slides = sl7_slider_prepare_slide($slides);
+    
+	if (isset($slides) && !empty($slides)) {
+      $prepare_slides = sl7_slider_prepare_slide($slides);
+    }
 
     if (count($prepare_slides) >= 2) {
       $block['content'] = array(
