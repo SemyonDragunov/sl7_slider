@@ -4,6 +4,7 @@
         <a href="<?php print $values['link']; ?>" target="<?php print $values['link_target']; ?>">
       <?php endif; ?>
       <div class="slide-item">
+        <div class="slide-fade"></div>
         <img class="lazyOwl" data-src="<?php print file_create_url(file_load($values['fid'])->uri); ?>" />
         <?php if (isset($values['title'])): ?>
           <span class="title"><?php print $values['title'];?></span>
