@@ -9,7 +9,6 @@
         items: 1,
         singleItem: true,
         autoPlay: settings.autoPlay,
-        stopOnHover: true,
         navigation: !!settings.navigation,
         navigationText: false,
         pagination: !!settings.pagination,
