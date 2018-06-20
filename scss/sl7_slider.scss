@@ -65,6 +65,12 @@ $big-screen-up-breakpoint: (
     }
 
     img {
+      @include susy-media((orientation: portrait)) {
+        height: 100%;
+        width: auto;
+        max-width: none;
+      }
+
       width: 100%;
     }
 
