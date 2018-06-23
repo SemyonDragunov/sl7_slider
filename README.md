@@ -16,7 +16,7 @@
 Требуемые модули от SL7:
 * [sl7_control_panel](https://github.com/SemyonDragunov/sl7_control_panel)
 
-Для Drupal 7. PHP =< 5.4 Jquery =< 1.7
+Для Drupal 7. PHP >= 5.4 & 7. Jquery =< 1.7
 
 Для продолжения разработки css смотрите bower.json
 
@@ -45,7 +45,7 @@ Slider based on OwlCarousel.
 Required modules from SL7:
 * [sl7_control_panel](https://github.com/SemyonDragunov/sl7_control_panel)
 
-For Drupal 7. PHP =< 5.4 Jquery =< 1.7
+For Drupal 7. PHP >= 5.4 и 7. Jquery =< 1.7
 
 To continue developing css, see bower.json
 
